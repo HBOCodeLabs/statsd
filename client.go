@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/quipo/statsd/event"
@@ -31,6 +32,9 @@ var Hostname string
 
 var errNotConnected = fmt.Errorf("cannot send stats, not connected to StatsD server")
 
+// lock to prevent concurrent attempts to dial in socket
+var lock uint32
+
 func init() {
 	host, err := os.Hostname()
 	if nil == err {
@@ -41,6 +45,8 @@ func init() {
 // StatsdClient is a client library to send events to StatsD
 type StatsdClient struct {
 	conn           net.Conn
+	connType       string
+	connError      error
 	addr           string
 	prefix         string
 	eventStringTpl string
@@ -64,25 +70,30 @@ func (c *StatsdClient) String() string {
 	return c.addr
 }
 
+// dial acquires the lock and attempts to create a socket connection (tcp or udp).
+func (c *StatsdClient) dial() {
+	if atomic.SwapUint32(&lock, 1) == 0 {
+		// release the lock
+		defer atomic.StoreUint32(&lock, 0)
+		c.conn, c.connError = net.DialTimeout(c.connType, c.addr, 5*time.Second)
+	}
+}
+
 // CreateSocket creates a UDP connection to a StatsD server
 func (c *StatsdClient) CreateSocket() error {
-	conn, err := net.DialTimeout("udp", c.addr, 5*time.Second)
-	if err != nil {
-		return err
-	}
-	c.conn = conn
-	return nil
+	c.connType = "udp"
+	c.dial()
+	// return error allowing client to decide how to proceed
+	return c.connError
 }
 
 // CreateTCPSocket creates a TCP connection to a StatsD server
 func (c *StatsdClient) CreateTCPSocket() error {
-	conn, err := net.DialTimeout("tcp", c.addr, 5*time.Second)
-	if err != nil {
-		return err
-	}
-	c.conn = conn
+	c.connType = "tcp"
 	c.eventStringTpl = "%s%s:%s\n"
-	return nil
+	c.dial()
+	// return error allowing client to decide how to proceed
+	return c.connError
 }
 
 // Close the UDP connection
@@ -182,6 +193,8 @@ func (c *StatsdClient) Total(stat string, value int64) error {
 // write a UDP packet with the statsd event
 func (c *StatsdClient) send(stat string, format string, value interface{}) error {
 	if c.conn == nil {
+		// connection is not established, attempt to connect while returning NotConnected error
+		go c.dial()
 		return errNotConnected
 	}
 	stat = strings.Replace(stat, "%HOST%", Hostname, 1)
@@ -194,6 +207,8 @@ func (c *StatsdClient) send(stat string, format string, value interface{}) error
 // SendEvent - Sends stats from an event object
 func (c *StatsdClient) SendEvent(e event.Event) error {
 	if c.conn == nil {
+		// connection is not established, attempt to connect while returning NotConnected error
+		go c.dial()
 		return errNotConnected
 	}
 	for _, stat := range e.Stats() {
@@ -210,6 +225,8 @@ func (c *StatsdClient) SendEvent(e event.Event) error {
 // Tries to bundle many together into one fmt.Fprintf based on UDPPayloadSize.
 func (c *StatsdClient) SendEvents(events map[string]event.Event) error {
 	if c.conn == nil {
+		// connection is not established, attempt to connect while returning NotConnected error
+		go c.dial()
 		return errNotConnected
 	}
 
