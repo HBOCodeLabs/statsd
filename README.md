@@ -43,7 +43,8 @@ func main() {
 	err := statsdclient.CreateSocket()
 	if nil != err {
 		log.Println(err)
-		os.Exit(1)
+		// optional exit, socket creation will be retried during lifecycle of the client
+		//os.Exit(1)
 	}
 	interval := time.Second * 2 // aggregate stats and flush every 2 seconds
 	stats := statsd.NewStatsdBuffer(interval, statsdclient)
