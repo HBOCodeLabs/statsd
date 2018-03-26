@@ -40,28 +40,58 @@ func init() {
 
 // StatsdClient is a client library to send events to StatsD
 type StatsdClient struct {
-	conn           net.Conn
-	addr           string
-	prefix         string
-	eventStringTpl string
-	Logger         Logger
+	conn             net.Conn
+	addr             string
+	prefix           string
+	eventStringTpl   string
+	Logger           Logger
+	conn_type        string
+	reconnect_ticker *time.Ticker
 }
 
 // NewStatsdClient - Factory
 func NewStatsdClient(addr string, prefix string) *StatsdClient {
 	// allow %HOST% in the prefix string
 	prefix = strings.Replace(prefix, "%HOST%", Hostname, 1)
-	return &StatsdClient{
-		addr:           addr,
-		prefix:         prefix,
-		Logger:         log.New(os.Stdout, "[StatsdClient] ", log.Ldate|log.Ltime),
-		eventStringTpl: "%s%s:%s",
+	client := &StatsdClient{
+		addr:             addr,
+		prefix:           prefix,
+		Logger:           log.New(os.Stdout, "[StatsdClient] ", log.Ldate|log.Ltime),
+		eventStringTpl:   "%s%s:%s",
+		reconnect_ticker: time.NewTicker(30 * time.Second),
 	}
+
+	go func() {
+		for range client.reconnect_ticker.C {
+			err := client.Reconnect()
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+	}()
+	return client
 }
 
 // String returns the StatsD server address
 func (c *StatsdClient) String() string {
 	return c.addr
+}
+
+func (c *StatsdClient) Reconnect() error {
+	var err error
+	if c.conn_type == "udp" {
+		fmt.Println("creating new udp")
+		err = c.CreateSocket()
+	} else if c.conn_type == "tcp" {
+		fmt.Println("creating new tcp")
+		err = c.CreateTCPSocket()
+	} else if c.conn_type == "" {
+		return fmt.Errorf("No socket created, cannot identify connection type")
+	}
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // CreateSocket creates a UDP connection to a StatsD server
@@ -71,6 +101,7 @@ func (c *StatsdClient) CreateSocket() error {
 		return err
 	}
 	c.conn = conn
+	c.conn_type = "udp"
 	return nil
 }
 
@@ -81,6 +112,7 @@ func (c *StatsdClient) CreateTCPSocket() error {
 		return err
 	}
 	c.conn = conn
+	c.conn_type = "tcp"
 	c.eventStringTpl = "%s%s:%s\n"
 	return nil
 }
