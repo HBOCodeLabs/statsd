@@ -64,7 +64,7 @@ func AutoReconnect(interval time.Duration) ConfigurationFunc {
 
 // NewStatsdClient is a factory func that creates a StatsdClient that sends to
 // the configured address and prefixes all stats with the given prefix name.
-func NewStatsdClient(addr string, prefix string, options ...ConfigurationFunc) *StatsdClient {
+func NewStatsdClient(addr string, prefix string, options ...ConfigurationFunc) (*StatsdClient, error) {
 	// allow %HOST% in the prefix string
 	prefix = strings.Replace(prefix, "%HOST%", Hostname, 1)
 	client := &StatsdClient{
@@ -92,7 +92,7 @@ func NewStatsdClient(addr string, prefix string, options ...ConfigurationFunc) *
 		}()
 	}
 
-	return client
+	return client, nil
 }
 
 // String returns the StatsD server address
