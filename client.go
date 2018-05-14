@@ -45,7 +45,7 @@ type StatsdClient struct {
 	prefix          string
 	eventStringTpl  string
 	Logger          Logger
-	conn_type       string
+	connType        string
 	reconnectTicker *time.Ticker
 }
 
@@ -102,13 +102,13 @@ func (c *StatsdClient) String() string {
 
 func (c *StatsdClient) Reconnect() error {
 	var err error
-	if c.conn_type == "udp" {
+	if c.connType == "udp" {
 		c.Logger.Println("creating new udp")
 		err = c.CreateSocket()
-	} else if c.conn_type == "tcp" {
+	} else if c.connType == "tcp" {
 		c.Logger.Println("creating new tcp")
 		err = c.CreateTCPSocket()
-	} else if c.conn_type == "" {
+	} else if c.connType == "" {
 		return fmt.Errorf("No socket created, cannot identify connection type")
 	}
 	if err != nil {
@@ -124,7 +124,7 @@ func (c *StatsdClient) CreateSocket() error {
 		return err
 	}
 	c.conn = conn
-	c.conn_type = "udp"
+	c.connType = "udp"
 	return nil
 }
 
@@ -135,7 +135,7 @@ func (c *StatsdClient) CreateTCPSocket() error {
 		return err
 	}
 	c.conn = conn
-	c.conn_type = "tcp"
+	c.connType = "tcp"
 	c.eventStringTpl = "%s%s:%s\n"
 	return nil
 }
