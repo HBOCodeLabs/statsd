@@ -100,6 +100,7 @@ func (c *StatsdClient) String() string {
 	return c.addr
 }
 
+// Reconnect causes the client to re-create its underlying socket used to send stats
 func (c *StatsdClient) Reconnect() error {
 	var err error
 	if c.connType == "udp" {
