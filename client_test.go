@@ -133,7 +133,7 @@ func TestReconnecting(t *testing.T) {
 	prefix := "test."
 
 	client := NewStatsdClient(udpAddr.String(), prefix)
-	client.reconnect_ticker = time.NewTicker(10 * time.Millisecond)
+	client.reconnectTicker = time.NewTicker(10 * time.Millisecond)
 
 	ch := make(chan string, 0)
 

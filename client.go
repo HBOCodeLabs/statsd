@@ -40,35 +40,58 @@ func init() {
 
 // StatsdClient is a client library to send events to StatsD
 type StatsdClient struct {
-	conn             net.Conn
-	addr             string
-	prefix           string
-	eventStringTpl   string
-	Logger           Logger
-	conn_type        string
-	reconnect_ticker *time.Ticker
+	conn            net.Conn
+	addr            string
+	prefix          string
+	eventStringTpl  string
+	Logger          Logger
+	conn_type       string
+	reconnectTicker *time.Ticker
 }
 
-// NewStatsdClient - Factory
-func NewStatsdClient(addr string, prefix string) *StatsdClient {
+// ConfigurationFunc is a typedef for a function that configures some aspect of
+// a StatsdClient instance
+type ConfigurationFunc func(*StatsdClient) error
+
+// AutoReconnect returns a ConfigurationFunc that causes the StatsdClient to automatically
+// recreate its underlying connection on the specified interval.
+func AutoReconnect(interval time.Duration) ConfigurationFunc {
+	return func(client *StatsdClient) error {
+		client.reconnectTicker = time.NewTicker(interval)
+		return nil
+	}
+}
+
+// NewStatsdClient is a factory func that creates a StatsdClient that sends to
+// the configured address and prefixes all stats with the given prefix name.
+func NewStatsdClient(addr string, prefix string, options ...ConfigurationFunc) *StatsdClient {
 	// allow %HOST% in the prefix string
 	prefix = strings.Replace(prefix, "%HOST%", Hostname, 1)
 	client := &StatsdClient{
-		addr:             addr,
-		prefix:           prefix,
-		Logger:           log.New(os.Stdout, "[StatsdClient] ", log.Ldate|log.Ltime),
-		eventStringTpl:   "%s%s:%s",
-		reconnect_ticker: time.NewTicker(30 * time.Second),
+		addr:           addr,
+		prefix:         prefix,
+		Logger:         log.New(os.Stdout, "[StatsdClient] ", log.Ldate|log.Ltime),
+		eventStringTpl: "%s%s:%s",
 	}
 
-	go func() {
-		for range client.reconnect_ticker.C {
-			err := client.Reconnect()
-			if err != nil {
-				fmt.Println(err)
-			}
+	// apply all the configuration functions
+	for _, opt := range options {
+		if err := opt(client); err != nil {
+			return nil, err
 		}
-	}()
+	}
+
+	if client.reconnectTicker != nil {
+		go func() {
+			for range client.reconnectTicker.C {
+				err := client.Reconnect()
+				if err != nil {
+					fmt.Println(err)
+				}
+			}
+		}()
+	}
+
 	return client
 }
 
