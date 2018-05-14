@@ -24,7 +24,7 @@ type Logger interface {
 //  func init() {
 //   statsd.UDPPayloadSize = 16 * 1024
 //  }
-var UDPPayloadSize int = 512
+var UDPPayloadSize = 512
 
 // Hostname is exported so clients can set it to something different than the default
 var Hostname string
@@ -269,7 +269,7 @@ func (c *StatsdClient) SendEvents(events map[string]event.Event) error {
 	}
 
 	var n int
-	var stats []string = make([]string, 0)
+	var stats = make([]string, 0)
 
 	for _, e := range events {
 		for _, stat := range e.Stats() {
