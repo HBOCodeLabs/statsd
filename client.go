@@ -86,7 +86,7 @@ func NewStatsdClient(addr string, prefix string, options ...ConfigurationFunc) *
 			for range client.reconnectTicker.C {
 				err := client.Reconnect()
 				if err != nil {
-					fmt.Println(err)
+					client.Logger.Println(err)
 				}
 			}
 		}()
@@ -103,10 +103,10 @@ func (c *StatsdClient) String() string {
 func (c *StatsdClient) Reconnect() error {
 	var err error
 	if c.conn_type == "udp" {
-		fmt.Println("creating new udp")
+		c.Logger.Println("creating new udp")
 		err = c.CreateSocket()
 	} else if c.conn_type == "tcp" {
-		fmt.Println("creating new tcp")
+		c.Logger.Println("creating new tcp")
 		err = c.CreateTCPSocket()
 	} else if c.conn_type == "" {
 		return fmt.Errorf("No socket created, cannot identify connection type")
