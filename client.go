@@ -62,6 +62,15 @@ func AutoReconnect(interval time.Duration) ConfigurationFunc {
 	}
 }
 
+// UseLogger returns a ConfigurationFunc that makes the StatsdClient use the specified Logger
+// implementation, rather than the default implementation.
+func UseLogger(logger Logger) ConfigurationFunc {
+	return func(client *StatsdClient) error {
+		client.Logger = logger
+		return nil
+	}
+}
+
 // NewStatsdClient is a factory func that creates a StatsdClient that sends to
 // the configured address and prefixes all stats with the given prefix name.
 func NewStatsdClient(addr string, prefix string, options ...ConfigurationFunc) (*StatsdClient, error) {
@@ -70,7 +79,6 @@ func NewStatsdClient(addr string, prefix string, options ...ConfigurationFunc) (
 	client := &StatsdClient{
 		addr:           addr,
 		prefix:         prefix,
-		Logger:         log.New(os.Stdout, "[StatsdClient] ", log.Ldate|log.Ltime),
 		eventStringTpl: "%s%s:%s",
 	}
 
@@ -79,6 +87,11 @@ func NewStatsdClient(addr string, prefix string, options ...ConfigurationFunc) (
 		if err := opt(client); err != nil {
 			return nil, err
 		}
+	}
+
+	// set some defaults, if necessary
+	if client.Logger == nil {
+		client.Logger = log.New(os.Stdout, "[StatsdClient] ", log.Ldate|log.Ltime)
 	}
 
 	if client.reconnectTicker != nil {
