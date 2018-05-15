@@ -57,7 +57,9 @@ type ConfigurationFunc func(*StatsdClient)
 // recreate its underlying connection on the specified interval.
 func AutoReconnect(interval time.Duration) ConfigurationFunc {
 	return func(client *StatsdClient) {
-		client.reconnectTicker = time.NewTicker(interval)
+		if interval > 0 {
+			client.reconnectTicker = time.NewTicker(interval)
+		}
 	}
 }
 
