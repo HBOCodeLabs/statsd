@@ -51,29 +51,27 @@ type StatsdClient struct {
 
 // ConfigurationFunc is a typedef for a function that configures some aspect of
 // a StatsdClient instance
-type ConfigurationFunc func(*StatsdClient) error
+type ConfigurationFunc func(*StatsdClient)
 
 // AutoReconnect returns a ConfigurationFunc that causes the StatsdClient to automatically
 // recreate its underlying connection on the specified interval.
 func AutoReconnect(interval time.Duration) ConfigurationFunc {
-	return func(client *StatsdClient) error {
+	return func(client *StatsdClient) {
 		client.reconnectTicker = time.NewTicker(interval)
-		return nil
 	}
 }
 
 // UseLogger returns a ConfigurationFunc that makes the StatsdClient use the specified Logger
 // implementation, rather than the default implementation.
 func UseLogger(logger Logger) ConfigurationFunc {
-	return func(client *StatsdClient) error {
+	return func(client *StatsdClient) {
 		client.Logger = logger
-		return nil
 	}
 }
 
 // NewStatsdClient is a factory func that creates a StatsdClient that sends to
 // the configured address and prefixes all stats with the given prefix name.
-func NewStatsdClient(addr string, prefix string, options ...ConfigurationFunc) (*StatsdClient, error) {
+func NewStatsdClient(addr string, prefix string, options ...ConfigurationFunc) *StatsdClient {
 	// allow %HOST% in the prefix string
 	prefix = strings.Replace(prefix, "%HOST%", Hostname, 1)
 	client := &StatsdClient{
@@ -84,9 +82,7 @@ func NewStatsdClient(addr string, prefix string, options ...ConfigurationFunc) (
 
 	// apply all the configuration functions
 	for _, opt := range options {
-		if err := opt(client); err != nil {
-			return nil, err
-		}
+		opt(client)
 	}
 
 	// set some defaults, if necessary
@@ -105,7 +101,7 @@ func NewStatsdClient(addr string, prefix string, options ...ConfigurationFunc) (
 		}()
 	}
 
-	return client, nil
+	return client
 }
 
 // String returns the StatsD server address
