@@ -113,13 +113,13 @@ func (c *StatsdClient) String() string {
 func (c *StatsdClient) Reconnect() error {
 	var err error
 	if c.connType == "udp" {
-		c.Logger.Println("creating new udp")
+		c.Logger.Println("creating new udp socket")
 		err = c.CreateSocket()
 	} else if c.connType == "tcp" {
-		c.Logger.Println("creating new tcp")
+		c.Logger.Println("creating new tcp socket")
 		err = c.CreateTCPSocket()
 	} else if c.connType == "" {
-		return fmt.Errorf("No socket created, cannot identify connection type")
+		return fmt.Errorf("no socket created, cannot identify connection type")
 	}
 	if err != nil {
 		return err
