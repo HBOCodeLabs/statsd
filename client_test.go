@@ -17,31 +17,40 @@ import (
 
 // MockNetConn is a mock for net.Conn
 type MockNetConn struct {
-	buf bytes.Buffer
+	buf    bytes.Buffer
+	Closed bool
 }
 
 func (mock *MockNetConn) Read(b []byte) (n int, err error) {
 	return mock.buf.Read(b)
 }
+
 func (mock *MockNetConn) Write(b []byte) (n int, err error) {
 	return mock.buf.Write(append(b, '\n'))
 }
-func (mock MockNetConn) Close() error {
+
+func (mock *MockNetConn) Close() error {
 	mock.buf.Truncate(0)
+	mock.Closed = true
 	return nil
 }
+
 func (mock MockNetConn) LocalAddr() net.Addr {
 	return nil
 }
+
 func (mock MockNetConn) RemoteAddr() net.Addr {
 	return nil
 }
+
 func (mock MockNetConn) SetDeadline(t time.Time) error {
 	return nil
 }
+
 func (mock MockNetConn) SetReadDeadline(t time.Time) error {
 	return nil
 }
+
 func (mock MockNetConn) SetWriteDeadline(t time.Time) error {
 	return nil
 }
@@ -278,6 +287,22 @@ func TestTCP(t *testing.T) {
 
 	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("did not receive all metrics: Expected: %T %v, Actual: %T %v \n", expected, expected, actual, actual)
+	}
+}
+
+func TestSocketCloseOnReconnect(t *testing.T) {
+	c := NewStatsdClient("127.0.0.1:1201", "test")
+	originalConn := &MockNetConn{} // mock connection
+	c.conn = originalConn
+
+	if originalConn.Closed {
+		t.Errorf("expected socket not to be closed, but it was")
+	}
+
+	c.Reconnect()
+
+	if !originalConn.Closed {
+		t.Errorf("expected previous socket to be closed, but it wasn't")
 	}
 }
 
