@@ -121,8 +121,6 @@ func (c *StatsdClient) String() string {
 // stats. Any existing socket is closed before opening a new socket. Any error
 // encountered while closing an existing socket is logged, but not returned.
 func (c *StatsdClient) Reconnect() error {
-	var err error
-
 	// close any existing socket before creating a new one
 	if c.conn != nil {
 		if err := c.conn.Close(); err != nil {
@@ -130,19 +128,16 @@ func (c *StatsdClient) Reconnect() error {
 		}
 	}
 
-	if c.connType == "udp" {
+	switch c.connType {
+	case "udp":
 		c.Logger.Println("creating new udp socket")
-		err = c.CreateSocket()
-	} else if c.connType == "tcp" {
+		return c.CreateSocket()
+	case "tcp":
 		c.Logger.Println("creating new tcp socket")
-		err = c.CreateTCPSocket()
-	} else if c.connType == "" {
+		return c.CreateTCPSocket()
+	default:
 		return fmt.Errorf("no socket created, cannot identify connection type")
 	}
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 // CreateSocket creates a UDP connection to a StatsD server
