@@ -55,11 +55,11 @@ type StatsdClient struct {
 // a StatsdClient instance
 type ConfigurationFunc func(*StatsdClient)
 
-// AutoReconnect returns a ConfigurationFunc that causes the StatsdClient to
+// WithReconnectInterval returns a ConfigurationFunc that causes the StatsdClient to
 // automatically recreate its underlying connection on the specified interval.
 // If no reconnection interval is supplied via this configuration func, or the
 // supplied interval is invalid, the default of 30 seconds will be used.
-func AutoReconnect(interval time.Duration) ConfigurationFunc {
+func WithReconnectInterval(interval time.Duration) ConfigurationFunc {
 	return func(client *StatsdClient) {
 		if interval > 0 {
 			client.reconnectTicker = time.NewTicker(interval)
@@ -67,9 +67,9 @@ func AutoReconnect(interval time.Duration) ConfigurationFunc {
 	}
 }
 
-// UseLogger returns a ConfigurationFunc that makes the StatsdClient use the specified Logger
+// WithLogger returns a ConfigurationFunc that makes the StatsdClient use the specified Logger
 // implementation, rather than the default implementation.
-func UseLogger(logger Logger) ConfigurationFunc {
+func WithLogger(logger Logger) ConfigurationFunc {
 	return func(client *StatsdClient) {
 		client.Logger = logger
 	}

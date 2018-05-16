@@ -141,7 +141,7 @@ func TestReconnecting(t *testing.T) {
 
 	prefix := "test."
 
-	client := NewStatsdClient(udpAddr.String(), prefix, AutoReconnect(10*time.Millisecond))
+	client := NewStatsdClient(udpAddr.String(), prefix, WithReconnectInterval(10*time.Millisecond))
 
 	ch := make(chan string, 0)
 
