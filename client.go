@@ -31,6 +31,8 @@ var Hostname string
 
 var errNotConnected = fmt.Errorf("cannot send stats, not connected to StatsD server")
 
+const defaultReconnectInterval = time.Second * 30
+
 func init() {
 	host, err := os.Hostname()
 	if nil == err {
@@ -53,8 +55,10 @@ type StatsdClient struct {
 // a StatsdClient instance
 type ConfigurationFunc func(*StatsdClient)
 
-// AutoReconnect returns a ConfigurationFunc that causes the StatsdClient to automatically
-// recreate its underlying connection on the specified interval.
+// AutoReconnect returns a ConfigurationFunc that causes the StatsdClient to
+// automatically recreate its underlying connection on the specified interval.
+// If no reconnection interval is supplied via this configuration func, or the
+// supplied interval is invalid, the default of 30 seconds will be used.
 func AutoReconnect(interval time.Duration) ConfigurationFunc {
 	return func(client *StatsdClient) {
 		if interval > 0 {
@@ -92,16 +96,18 @@ func NewStatsdClient(addr string, prefix string, options ...ConfigurationFunc) *
 		client.Logger = log.New(os.Stdout, "[StatsdClient] ", log.Ldate|log.Ltime)
 	}
 
-	if client.reconnectTicker != nil {
-		go func() {
-			for range client.reconnectTicker.C {
-				err := client.Reconnect()
-				if err != nil {
-					client.Logger.Println(err)
-				}
-			}
-		}()
+	if client.reconnectTicker == nil {
+		client.reconnectTicker = time.NewTicker(defaultReconnectInterval)
 	}
+
+	go func() {
+		for range client.reconnectTicker.C {
+			err := client.Reconnect()
+			if err != nil {
+				client.Logger.Println(err)
+			}
+		}
+	}()
 
 	return client
 }
