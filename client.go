@@ -117,9 +117,19 @@ func (c *StatsdClient) String() string {
 	return c.addr
 }
 
-// Reconnect causes the client to re-create its underlying socket used to send stats
+// Reconnect causes the client to re-create its underlying socket used to send
+// stats. Any existing socket is closed before opening a new socket. Any error
+// encountered while closing an existing socket is logged, but not returned.
 func (c *StatsdClient) Reconnect() error {
 	var err error
+
+	// close any existing socket before creating a new one
+	if c.conn != nil {
+		if err := c.conn.Close(); err != nil {
+			c.Logger.Println(fmt.Sprintf("error closing existing %s socket:", c.connType), err.Error())
+		}
+	}
+
 	if c.connType == "udp" {
 		c.Logger.Println("creating new udp socket")
 		err = c.CreateSocket()
