@@ -33,6 +33,13 @@ var errNotConnected = fmt.Errorf("cannot send stats, not connected to StatsD ser
 
 const defaultReconnectInterval = time.Second * 30
 
+type socketType string
+
+const (
+	udpSocket socketType = "udp"
+	tcpSocket socketType = "tcp"
+)
+
 func init() {
 	host, err := os.Hostname()
 	if nil == err {
@@ -47,7 +54,7 @@ type StatsdClient struct {
 	prefix          string
 	eventStringTpl  string
 	Logger          Logger
-	connType        string
+	connType        socketType
 	reconnectTicker *time.Ticker
 }
 
@@ -125,10 +132,10 @@ func (c *StatsdClient) Reconnect() error {
 	prevSocket := c.conn
 
 	switch c.connType {
-	case "udp":
+	case udpSocket:
 		c.Logger.Println("creating new udp socket")
 		err = c.CreateSocket()
-	case "tcp":
+	case tcpSocket:
 		c.Logger.Println("creating new tcp socket")
 		err = c.CreateTCPSocket()
 	default:
@@ -147,23 +154,29 @@ func (c *StatsdClient) Reconnect() error {
 
 // CreateSocket creates a UDP connection to a StatsD server
 func (c *StatsdClient) CreateSocket() error {
+	// Set the conn/socket type before dialing, so that if the socket creation
+	// fails, the Reconnect method will still know what type of socket to
+	// reconnect.
+	c.connType = udpSocket
 	conn, err := net.DialTimeout("udp", c.addr, 5*time.Second)
 	if err != nil {
 		return err
 	}
 	c.conn = conn
-	c.connType = "udp"
 	return nil
 }
 
 // CreateTCPSocket creates a TCP connection to a StatsD server
 func (c *StatsdClient) CreateTCPSocket() error {
+	// Set the conn/socket type before dialing, so that if the socket creation
+	// fails, the Reconnect method will still know what type of socket to
+	// reconnect.
+	c.connType = tcpSocket
 	conn, err := net.DialTimeout("tcp", c.addr, 5*time.Second)
 	if err != nil {
 		return err
 	}
 	c.conn = conn
-	c.connType = "tcp"
 	c.eventStringTpl = "%s%s:%s\n"
 	return nil
 }
