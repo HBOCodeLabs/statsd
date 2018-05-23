@@ -68,7 +68,7 @@ func newLocalListenerUDP(t *testing.T) (*net.UDPConn, *net.UDPAddr) {
 	return ln, udpAddr
 }
 
-func TestTiming(t *testing.T) {
+func TestTimingTCP(t *testing.T) {
 	addr, ln := newLocalListenerTCP(t)
 	defer ln.Close()
 
