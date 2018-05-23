@@ -68,6 +68,59 @@ func newLocalListenerUDP(t *testing.T) (*net.UDPConn, *net.UDPAddr) {
 	return ln, udpAddr
 }
 
+func TestTiming(t *testing.T) {
+	addr, ln := newLocalListenerTCP(t)
+	defer ln.Close()
+
+	prefix := "myproject."
+
+	ch := make(chan string, 0)
+
+	type metric struct {
+		key string
+		val int64
+	}
+
+	s := [4]metric{
+		metric{"a:b:c", 5},
+		metric{"d:e:f", 2},
+		metric{"x:b:c", 5},
+		metric{"g.h.i", 1},
+	}
+
+	expected := [4]string{
+		"myproject.a:b:c:5|ms",
+		"myproject.d:e:f:2|ms",
+		"myproject.x:b:c:5|ms",
+		"myproject.g.h.i:1|ms",
+	}
+
+	go doListenTCP(t, ln, ch, len(s))
+
+	client := NewStatsdClient(addr, prefix)
+	err := client.CreateTCPSocket()
+	if nil != err {
+		t.Fatal(err)
+	}
+	defer client.Close()
+
+	for m := range s {
+		client.Timing(s[m].key, s[m].val)
+	}
+
+	timeout := time.After(30 * time.Millisecond)
+	for i := 0; i < len(s); i++ {
+		select {
+		case x := <-ch:
+			if x != expected[i] {
+				t.Fatal("")
+			}
+		case <-timeout:
+			t.Fatal("Timed out")
+		}
+	}
+}
+
 func TestTotal(t *testing.T) {
 	ln, udpAddr := newLocalListenerUDP(t)
 	defer ln.Close()
