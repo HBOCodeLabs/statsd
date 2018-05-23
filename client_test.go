@@ -294,12 +294,16 @@ func TestSocketCloseOnReconnect(t *testing.T) {
 	c := NewStatsdClient("127.0.0.1:1201", "test")
 	originalConn := &MockNetConn{} // mock connection
 	c.conn = originalConn
+	c.connType = udpSocket
 
 	if originalConn.Closed {
 		t.Errorf("expected socket not to be closed, but it was")
 	}
 
-	c.Reconnect()
+	err := c.Reconnect()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if !originalConn.Closed {
 		t.Errorf("expected previous socket to be closed, but it wasn't")
